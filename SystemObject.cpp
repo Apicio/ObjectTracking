@@ -9,8 +9,6 @@ using namespace std;
 
 void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& centroids, t_Mat<int>& bboxes, Mat& mask)
 {
-
-
 	vector<KeyPoint> keypoints;  	
 	Mat keyPointImage; Mat kernel; Mat labels; Mat centroid; Mat stats;
 
@@ -38,11 +36,10 @@ void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& cent
 			bboxes.set(i, 3, stats.at<int>(i, CC_STAT_AREA)); //Area of bbox
 		}
 	}
-
 }
 
 void SystemObject::predictNewLocationsOfTracks(vector<t_tracks> tracks) {
-	for (int i = 1; i < tracks.size; i++) {
+	for (int i = 1; i < tracks.size(); i++) {
 		int* bbox = tracks.at(i).bbox;	/* Posizione nell'immagine [0] e [1] e dimensione del box [2] e [3] */
 		int* predictedCentroid;			/* x, y */
 		// Predict the current location of the track.
@@ -65,7 +62,7 @@ void SystemObject::predictNewLocationsOfTracks(vector<t_tracks> tracks) {
 */
 void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<double> centroids, /*return*/ t_Mat<int>& assignments, t_Mat<int>& unassignedTracks, t_Mat<int>& unassignedDetections)
 {
-	int nTracks = tracks.size;
+	int nTracks = tracks.size();
 	int nDetections = centroids.getSize()[0]; /* Numero di riga rappresenta il numero di Blob individuati*/
 	// Compute the cost of assigning each detection to each track.
 	double SimilarityMatrix[HEIGHT + 1][WEIGHT + 1];
@@ -174,7 +171,7 @@ void SystemObject::updateUnassignedTracks(t_Mat<int> unassignedTracks,  /*return
 }
 void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks> tracks)
 {
-	int numTraks = tracks.size;
+	int numTraks = tracks.size();
 	if (numTraks == 0)
 		return;
 
