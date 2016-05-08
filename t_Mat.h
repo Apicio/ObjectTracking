@@ -2,29 +2,26 @@
 
 #include <vector>
 #define OUT_OF_BOUND -1
+#define HEIGHT 100
+#define WEIGHT 100
+
 
 template <typename type> class t_Mat
 {
 private:
-	vector< vector<type> > matrix(4, vector<int>(4));
-	int row = 4;
-	int col = 4;
+	type matrix[HEIGHT][WEIGHT];
+	int row = 0;
+	int col = 0;
 public:
+	t_Mat() {};
 	void resize_matrix(int row_resize, int col_resize) {
-		if(row_resize>row)
-			this.matrix.resize(row_resize);
-
-		if(col_resize>col)
-			for (int i = 0; i < row_resize; i++)
-				this.matrix.at(i).resize(col_resize);
-
 		row = row_resize;
 		col = col_resize;
 	};
 	type get(int i, int j) {
 		if (i >= row || j >= col)
 			return OUT_OF_BOUND;
-		return matrix.at(i).at(j);
+		return this.matrix[i][j];
 	};
 	void set(int i, int j, type element) {
 		int row_resize, col_resize;
@@ -34,13 +31,19 @@ public:
 			col_resize = j + 1;
 
 		resize_matrix(row_resize, col_resize);
-		this.matrix.at(i).at(j) = element;
+		this.matrix.[i][j] = element;
 	};
-	int[2] getSize() {
+	int* getSize() {
 		int s[2];
 		s[0] = row;
 		s[1] = col;
 		return s;
 	};
+	int* maxSize() {
+		int s[2];
+		s[0] = HEIGHT;
+		s[1] = WEIGHT;
+		return s;
+	};
+	~t_Mat() {};
 };
-
