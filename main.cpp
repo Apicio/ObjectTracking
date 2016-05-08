@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 		/** Declaration ************************************/
 		toOpen << "view1/" << i << ".jpg";
 		frame = imread(toOpen.str(), IMREAD_COLOR);
-#if 0
+
 		obj->detectObjects(frame, /*return*/ centroids, bboxes, mask);
 		obj->predictNewLocationsOfTracks(tracks);
 		obj->detectionToTrackAssignment(tracks, centroids, /*return*/ assignments, unassignedTracks, unassignedDetections);
@@ -47,8 +47,6 @@ int main(int argc, char** argv)
 		obj->createNewTracks(centroids, bboxes, unassignedDetections, /*return*/ nextId, tracks);
 
 		displayTrackingResults(frame, mask, tracks, obj);
-#endif // 0
-
 	}
 	
 	return 0;

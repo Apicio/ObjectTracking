@@ -3,8 +3,8 @@ class t_tracks
 {
 public:
 	int id;
-	int bbox;
-	int kalmaFilter;
+	int* bbox;
+	Mat kalmaFilter;
 	int age;
 	int totalVisibleCount;
 	int consecutiveInvisibleCount;

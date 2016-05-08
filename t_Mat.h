@@ -1,9 +1,8 @@
 #pragma once
 
 #include <vector>
+#include "Intestazione.h"
 #define OUT_OF_BOUND -1
-#define HEIGHT 100
-#define WEIGHT 100
 
 
 template <typename type> class t_Mat

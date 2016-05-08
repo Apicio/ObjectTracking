@@ -7,12 +7,15 @@
 #include <iostream>
 #include <stdio.h>
 #include "t_tracks.h"
+#include "Intestazione.h"
 #include <fstream>
 #include <sstream>
 #include "t_Mat.h"
 #include <string>
 #include <math.h>
 #include <vector>
+
+#define THRESHOLD 0.7
 
 using namespace cv;
 using namespace std;
