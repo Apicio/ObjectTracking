@@ -9,7 +9,7 @@ class t_tracks
 public:
 	int id;
 	int* bbox;
-	KalmanFilter kFilt;
+	KalmanFilter kalmanFilter;
 	int age;
 	int totalVisibleCount;
 	int consecutiveInvisibleCount;

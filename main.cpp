@@ -26,9 +26,8 @@ int main(int argc, char** argv)
 	vector<t_tracks> tracks;
 	int nextId = 1;
 	SystemObject* obj = new SystemObject();
-	namedWindow("Display window", WINDOW_AUTOSIZE); 
-	Ptr<BackgroundSubtractor> pMOG;
-	pMOG =  createBackgroundSubtractorMOG2(40,32,false); /*history, ngaussianMixuter, shadows*/
+	namedWindow("Display Original", WINDOW_AUTOSIZE); 
+	namedWindow("Display Mask", WINDOW_AUTOSIZE);
 
 	for (int i = 1; i < 795; i++) {
 		/** Declaration ************************************/
@@ -49,15 +48,24 @@ int main(int argc, char** argv)
 		obj->createNewTracks(centroids, bboxes, unassignedDetections, /*return*/ nextId, tracks);
 
 		displayTrackingResults(frame, mask, tracks, obj);
-		
-		waitKey(0);
 	}
-	
+
+
 	return 0;
 }
 
 void displayTrackingResults(Mat frame, Mat mask, vector<t_tracks> traks, SystemObject* obj) {
-	imshow("Display window", frame);
+	int numTraks = traks.size();
+	for (int i = 0; i < numTraks; i++) {
+		int* cur_box = traks.at(i).bbox;
+		Point pt1(cur_box[0], cur_box[1]);
+		Point pt2(cur_box[0]+cur_box[2], cur_box[1]+cur_box[3]);
+		rectangle(frame, pt1, pt2, 0);
+	}
+
+	imshow("Display Original", frame);
+	imshow("Display Mask", mask);
+
 	waitKey(0); // Wait for a keystroke in the window
 }
 

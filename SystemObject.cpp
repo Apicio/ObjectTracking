@@ -17,37 +17,38 @@ void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& cent
 	pMOG->apply(frame, mask);
 	kernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
 	morphologyEx(mask, mask, MORPH_OPEN, kernel);
-	imshow("mask", mask);
 	/*Blobs Detection, compute centroids and bboxes*/
 	int nLabels = connectedComponentsWithStats(mask,labels, stats,centroid);
-
+	
+	int num_blob = 0;
 	for (int i = 0; i < nLabels; i++) {
-		if (i > 0) {												//i=0 is background, skipping it...
-			centroids.set(i, 0, centroid.at<double>(i, 0)); //x coord of centroid
-			centroids.set(i, 0, centroid.at<double>(i, 1)); //y coord of centroid
+		float area = stats.at<int>(i, CC_STAT_AREA);
+		if (area < MAXAREA && area > MINAREA) {
+			centroids.set(num_blob, 0, centroid.at<double>(i, 0)); //x coord of centroid
+			centroids.set(num_blob, 1, centroid.at<double>(i, 1)); //y coord of centroid
 
 			/* bboxes organized as column matrix with 4 columns:
 
 			| topmoseleft_corner | horizonal_size | vertical_size | area | */
 
-			bboxes.set(i, 0, stats.at<int>(i, CC_STAT_TOP)); //topmost left corner of bbox
-			bboxes.set(i, 1, stats.at<int>(i, CC_STAT_WIDTH)); //horizontal size of bbox
-			bboxes.set(i, 2, stats.at<int>(i, CC_STAT_HEIGHT)); //vertical size of bbox
-			bboxes.set(i, 3, stats.at<int>(i, CC_STAT_AREA)); //Area of bbox
+ 			bboxes.set(num_blob, 0, stats.at<int>(i, CC_STAT_LEFT)); //topmost left corner of bbox
+			bboxes.set(num_blob, 1, stats.at<int>(i, CC_STAT_TOP));
+			bboxes.set(num_blob, 2, stats.at<int>(i, CC_STAT_WIDTH)); //horizontal size of bbox
+			bboxes.set(num_blob, 3, stats.at<int>(i, CC_STAT_HEIGHT)); //vertical size of bbox
+			num_blob++;
 		}
 	}
+	int a = 1;
 }
 
 void SystemObject::predictNewLocationsOfTracks(vector<t_tracks> tracks) {
 	for (int i = 1; i < tracks.size(); i++) {
 		int* bbox = tracks.at(i).bbox;	/* Posizione nell'immagine [0] e [1] e dimensione del box [2] e [3] */
-		int* predictedCentroid;			/* x, y */
+		int predictedCentroid[2];		/* x, y */
 		// Predict the current location of the track.
-		Mat prediction = tracks.at(i).kFilt.predict();
-		/*!!!!! TODO !!!!! VERIFICARE prediction COSA CONTIENE*/
-		// Shift the bounding box so that its center is at the predicted location.
-		predictedCentroid[0] = (int) (predictedCentroid[0] - bbox[2] / 2);
-		predictedCentroid[1] = (int)(predictedCentroid[1] - bbox[3] / 2);
+		Mat prediction = tracks.at(i).kalmanFilter.predict();
+		predictedCentroid[0] = (int)(prediction.at<float>(0) - bbox[2] / 2);
+		predictedCentroid[1] = (int)(prediction.at<float>(1) - bbox[3] / 2);
 		int n_bbox[4] = {predictedCentroid[0], predictedCentroid[1], bbox[2], bbox[3]};
 		tracks.at(i).bbox = n_bbox;
 	}
@@ -72,13 +73,20 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 		SimilarityMatrix[i][0] = i;
 	for (int j = 1; j < nTracks + 1; j++)
 		SimilarityMatrix[0][j] = j;
-	// Popolazione della matrice di Similarità  
-
+	// Popolazione della matrice di Similarità: calcolo misura di similarità
 	for (int i = 1; i < nTracks + 1; i++) {
 		for (int j = 1; j < nDetections + 1; j++) {
-			/*!!!! TODO !!!!! A valle dell'aver capito cosa c'è nella predizione di Kalman, effettuare differenza fra il centroide predetto
-			e quello che abbiamo noi. distance serve a niente a finale.*/
-			//SimilarityMatrix[i][j] = distance(tracks(i).kFilt, centroids);//??
+
+			Mat prediction = tracks.at(i).kalmanFilter.predict();
+			int predictedCentroid[2];
+			int centroid[2];
+			predictedCentroid[0] = (int)(prediction.at<float>(0) - tracks.at(i).bbox[2] / 2);
+			predictedCentroid[1] = (int)(prediction.at<float>(1) - tracks.at(i).bbox[3] / 2);
+			centroid[0] = centroids.get(i, 0);
+			centroid[1] = centroids.get(i, 1);
+			float dist = sqrt(pow((predictedCentroid[0] - centroid[0]), 2) + pow((predictedCentroid[0] - centroid[0]), 2));
+			dist = dist < DMAX ? dist : DMAX;
+			SimilarityMatrix[i][j] = 1 - dist / DMAX;
 		}
 	}
 
@@ -143,12 +151,10 @@ void SystemObject::updateAssignedTracks(t_Mat<double> centroids, t_Mat<int> bbox
 		bbox[2] = bboxes.get(detectionIdx, 2);
 		bbox[3] = bboxes.get(detectionIdx, 3);
 		// Correct the estimate of the object's location using the new detection.
-
-		/*!!!! TODO !!!!! A valle dell'aver capito cosa c'è nella predizione di Kalman, effettuare aggiornamento dei parametri stimati
-		con quelli misurati.*/
-
-		//tracks.at(trackIdx).kFilt.correct(centroid) ;
-		
+		Mat_<float> measurement(2, 1); measurement.setTo(Scalar(0));
+		measurement(0) = centroid[0];
+		measurement(1) = centroid[1];
+		tracks.at(trackIdx).kalmanFilter.correct(measurement) ;
 		// Replace predicted bounding box with detected bounding box.
 		tracks.at(trackIdx).bbox = bbox;
 		// Update track's age.
@@ -226,16 +232,26 @@ void SystemObject::createNewTracks(t_Mat<double> centroids, t_Mat<int> bboxes, t
 
 	for (int i = 0; i < centroids.getSize()[0]; i++) {
 		// Create a Kalman filter object.
-		//kFilt kFilt = kFilt('ConstantVelocity', centroids, [200, 50], [100, 25], 100); //?
+		KalmanFilter kalmanFilter(4, 2, 0); /* Stato iniziale, posizione, velocità per x e y */
+		kalmanFilter.transitionMatrix = (Mat_<float>(4, 4) << 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1);
+		Mat_<float> measurement(2, 1); measurement.setTo(Scalar(0));
 
-		/*!!!! TODO !!!!! CONFIGURARE KALMAN (VEDI ESEMPIO OCV)*/
-		KalmanFilter kFilt(2, 1, 0);
+		kalmanFilter.statePre.at<float>(0) = centroids.get(i,0);
+		kalmanFilter.statePre.at<float>(1) = centroids.get(i,1);
+		kalmanFilter.statePre.at<float>(2) = 0;
+		kalmanFilter.statePre.at<float>(3) = 0;
+
+		setIdentity(kalmanFilter.measurementMatrix);
+		setIdentity(kalmanFilter.processNoiseCov, Scalar::all(1e-4));
+		setIdentity(kalmanFilter.measurementNoiseCov, Scalar::all(10));
+		setIdentity(kalmanFilter.errorCovPost, Scalar::all(.1));
+
 		// Create a new track
 		t_tracks track;
 		track.id = nextId;
 		int temp_bbox[4] = {centroids.get(i,0), centroids.get(i,1), centroids.get(i,2), centroids.get(i,3)};
 		track.bbox = temp_bbox;
-		track.kFilt = kFilt;
+		track.kalmanFilter = kalmanFilter;
 		track.age = 1;
 		track.totalVisibleCount = 1;
 		track.consecutiveInvisibleCount = 0;

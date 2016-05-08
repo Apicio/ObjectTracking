@@ -12,13 +12,16 @@
 #include <sstream>
 #include "t_Mat.h"
 #include <string>
-#include <math.h>
 #include <vector>
+#include <Math.h>
 
 #define THRESHOLD 0.7
 #define INVISIBLEFORTOOLONG 20
 #define AGETHRESHOLD 8
 #define VISIBILITYTHRESHOLD 0.6
+#define DMAX 0.5
+#define MINAREA 100
+#define MAXAREA 5000
 
 using namespace cv;
 using namespace std;
@@ -28,7 +31,9 @@ class SystemObject
 private:
 	Ptr<BackgroundSubtractor> pMOG;
 public:
-	SystemObject();
+	SystemObject() {
+		pMOG = createBackgroundSubtractorMOG2(40, 32, false); /*history, ngaussianMixuter, shadows*/
+	};
 	void detectObjects(const Mat, t_Mat<double>&, t_Mat<int>&, Mat&);
 	void predictNewLocationsOfTracks(vector<t_tracks>);
 	void detectionToTrackAssignment(vector<t_tracks>, t_Mat<double>, t_Mat<int>&, t_Mat<int>&, t_Mat<int>&);

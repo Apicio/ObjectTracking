@@ -26,8 +26,12 @@ public:
 		int row_resize, col_resize;
 		if (row < i + 1)
 			row_resize = i + 1;
+		else
+			row_resize = row;
 		if (col < j + 1)
 			col_resize = j + 1;
+		else
+			col_resize = col;
 
 		resize_matrix(row_resize, col_resize);
 		matrix[i][j] = element;
