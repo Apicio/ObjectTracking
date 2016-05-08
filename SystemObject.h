@@ -16,6 +16,9 @@
 #include <vector>
 
 #define THRESHOLD 0.7
+#define INVISIBLEFORTOOLONG 20
+#define AGETHRESHOLD 8
+#define VISIBILITYTHRESHOLD 0.6
 
 using namespace cv;
 using namespace std;
