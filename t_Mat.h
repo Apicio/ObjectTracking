@@ -20,7 +20,7 @@ public:
 	type get(int i, int j) {
 		if (i >= row || j >= col)
 			return OUT_OF_BOUND;
-		return this.matrix[i][j];
+		return matrix[i][j];
 	};
 	void set(int i, int j, type element) {
 		int row_resize, col_resize;
@@ -30,7 +30,7 @@ public:
 			col_resize = j + 1;
 
 		resize_matrix(row_resize, col_resize);
-		this.matrix[i][j] = element;
+		matrix[i][j] = element;
 	};
 	bool isEmpty() {
 		return row == 0 && col == 0;

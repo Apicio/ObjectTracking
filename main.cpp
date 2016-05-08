@@ -27,6 +27,8 @@ int main(int argc, char** argv)
 	int nextId = 1;
 	SystemObject* obj = new SystemObject();
 	namedWindow("Display window", WINDOW_AUTOSIZE); 
+	Ptr<BackgroundSubtractor> pMOG;
+	pMOG =  createBackgroundSubtractorMOG2(40,32,false); /*history, ngaussianMixuter, shadows*/
 
 	for (int i = 1; i < 795; i++) {
 		/** Declaration ************************************/
@@ -47,6 +49,8 @@ int main(int argc, char** argv)
 		obj->createNewTracks(centroids, bboxes, unassignedDetections, /*return*/ nextId, tracks);
 
 		displayTrackingResults(frame, mask, tracks, obj);
+		
+		waitKey(0);
 	}
 	
 	return 0;

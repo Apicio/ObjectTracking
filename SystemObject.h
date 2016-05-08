@@ -29,7 +29,7 @@ private:
 
 public:
 	SystemObject();
-	void detectObjects(const Mat, t_Mat<double>&, t_Mat<int>&, Mat&);
+	void detectObjects(const Mat, t_Mat<double>&, t_Mat<double>&, Mat&);
 	void predictNewLocationsOfTracks(vector<t_tracks>);
 	void detectionToTrackAssignment(vector<t_tracks>, t_Mat<double>, t_Mat<int>&, t_Mat<int>&, t_Mat<int>&);
 	void updateAssignedTracks(t_Mat<double>, t_Mat<int>, t_Mat<int>, vector<t_tracks>&);

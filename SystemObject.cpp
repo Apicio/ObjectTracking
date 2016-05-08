@@ -8,8 +8,37 @@
 using namespace cv;
 using namespace std;
 
-void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& centroids, t_Mat<int>& bboxes, Mat& mask)
+void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& centroids, t_Mat<double>& bboxes, Mat& mask)
 {
+
+
+	vector<KeyPoint> keypoints;  	
+	Mat keyPointImage; Mat kernel; Mat labels; Mat centroid; Mat stats;
+
+
+	/*Background Subtraction*/
+	pMOG->apply(frame, mask);
+	kernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
+	morphologyEx(mask, mask, MORPH_OPEN, kernel);
+	imshow("mask", mask);
+	/*Blobs Detection, compute centroids and bboxes*/
+	int nLabels = connectedComponentsWithStats(mask,labels, stats,centroid);
+
+	for (int i = 0; i < nLabels; i++) {
+		if (i > 0) {												//i=0 is background, skipping it...
+			centroids.set(i, 0, centroid.at<double>(i, 0)); //x coord of centroid
+			centroids.set(i, 0, centroid.at<double>(i, 1)); //y coord of centroid
+
+			/* bboxes organized as column matrix with 4 columns:
+
+			| topmoseleft_corner | horizonal_size | vertical_size | area | */
+
+			bboxes.set(i, 0, stats.at<double>(i, CC_STAT_TOP)); //topmost left corner of bbox
+			bboxes.set(i, 1, stats.at<double>(i, CC_STAT_WIDTH)); //horizontal size of bbox
+			bboxes.set(i, 2, stats.at<double>(i, CC_STAT_HEIGHT)); //vertical size of bbox
+			bboxes.set(i, 3, stats.at<double>(i, CC_STAT_AREA)); //Area of bbox
+		}
+	}
 
 }
 
