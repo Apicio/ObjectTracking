@@ -1,5 +1,7 @@
 #include "SystemObject.h"
 
+using namespace cv;
+using namespace std;
 
 SystemObject::SystemObject()
 {

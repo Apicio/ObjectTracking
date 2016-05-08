@@ -13,6 +13,8 @@
 #include <math.h>
 #include <vector>
 
+using namespace cv;
+using namespace std;
 
 class SystemObject
 {
