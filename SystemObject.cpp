@@ -109,6 +109,7 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 				}
 			}				
 		}
+		int a = 1;
 		if (max > THRESHOLD) {
 			// Salvo l'assegnazione
 			assignments.set(num_of_assignments, 0, max_i); /* Assign trackIdx */
@@ -121,20 +122,22 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 	} while (max > THRESHOLD);
 
 	// Verifico Blob non assegnati
-	int num_of_unassignedTracks = 0;
+	
+	int num_of_unassignedDetections = 0;
 	for (int i = 1; i < nDetections + 1; i++)
 		if (SimilarityMatrix[i][0] == i) {
-			unassignedTracks.set(num_of_unassignedTracks, 0, i);
-			num_of_unassignedTracks++;
+			unassignedDetections.set(num_of_unassignedDetections, 0, i);
+			num_of_unassignedDetections++;
 		}
 
 	// Verifico Oggetti non assegnati
-	int num_of_unassignedDetections = 0;
+	int num_of_unassignedTracks = 0;
 	for (int j = 1; j < nTracks + 1; j++)
 		if (SimilarityMatrix[0][j] == j) {
-			unassignedDetections.set(num_of_unassignedTracks, 0, j);
-			num_of_unassignedDetections++;
+			unassignedTracks.set(num_of_unassignedTracks, 0, j);
+			num_of_unassignedTracks++;
 		}
+	int a = 1;
 }
 void SystemObject::updateAssignedTracks(t_Mat<double> centroids, t_Mat<int> bboxes, t_Mat<int> assignments, /*return*/ vector<t_tracks>& tracks)
 {
@@ -167,6 +170,9 @@ void SystemObject::updateAssignedTracks(t_Mat<double> centroids, t_Mat<int> bbox
 void SystemObject::updateUnassignedTracks(t_Mat<int> unassignedTracks,  /*return*/ vector<t_tracks>& tracks)
 {
 	int numUnassignedTracks = unassignedTracks.getSize()[0];
+	if (numUnassignedTracks > tracks.size())
+		return;
+
 	for (int i = 0; i < numUnassignedTracks; i++) {
 //		if (numUnassignedTracks > 0) { 
 			int ind = unassignedTracks.get(0,i);
