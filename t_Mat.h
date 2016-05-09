@@ -14,6 +14,14 @@ private:
 public:
 	t_Mat() {};
 	void resize_matrix(int row_resize, int col_resize) {
+		for (int i = row; i < row_resize; i++)
+			for (int j = 0; j < col_resize; j++)
+				matrix[i][j] = 0;
+
+		for (int i = 0; i < row_resize; i++)
+			for (int j = col; j < col_resize; j++)
+				matrix[i][j] = 0;
+
 		row = row_resize;
 		col = col_resize;
 	};
