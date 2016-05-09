@@ -51,5 +51,12 @@ public:
 		s[1] = WEIGHT;
 		return s;
 	};
+	int* getRowVector(int row) {
+		int tmp[4]; // DA CAMBIARE
+		for (int i = 0; i < col; i++) {
+			tmp[i] = get(row, i);
+		}
+		return tmp;
+	}
 	~t_Mat() {};
 };

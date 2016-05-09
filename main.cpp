@@ -19,7 +19,7 @@
 using namespace cv;
 using namespace std;
 
-void displayTrackingResults(Mat, Mat, vector<t_tracks>, SystemObject*);
+void displayTrackingResults(Mat, Mat, t_Mat<double>&, t_Mat<int>&);
 
 int main(int argc, char** argv)
 {
@@ -47,17 +47,17 @@ int main(int argc, char** argv)
 		obj->deleteLostTracks(/*return*/ tracks);
 		obj->createNewTracks(centroids, bboxes, unassignedDetections, /*return*/ nextId, tracks);
 
-		displayTrackingResults(frame, mask, tracks, obj);
+		displayTrackingResults(frame, mask, centroids,bboxes);
 	}
 
 
 	return 0;
 }
-
-void displayTrackingResults(Mat frame, Mat mask, vector<t_tracks> traks, SystemObject* obj) {
-	int numTraks = traks.size();
+/*To check drawing rectangles*/
+void displayTrackingResults(Mat frame, Mat mask, t_Mat<double>& centroids, t_Mat<int>& bboxes) {
+	int numTraks = bboxes.getSize()[0];
 	for (int i = 0; i < numTraks; i++) {
-		int* cur_box = traks.at(i).bbox;
+		int* cur_box = bboxes.getRowVector(i);
 		Point pt1(cur_box[0], cur_box[1]);
 		Point pt2(cur_box[0]+cur_box[2], cur_box[1]+cur_box[3]);
 		rectangle(frame, pt1, pt2, 0);
