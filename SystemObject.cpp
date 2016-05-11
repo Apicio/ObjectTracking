@@ -77,13 +77,13 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 	for (int i = 1; i < nTracks + 1; i++) {
 		for (int j = 1; j < nDetections + 1; j++) {
 
-			Mat prediction = tracks.at(i).kalmanFilter.predict();
+			Mat prediction = tracks.at(i-1).kalmanFilter.predict();
 			int predictedCentroid[2];
 			int centroid[2];
-			predictedCentroid[0] = (int)(prediction.at<float>(0) - tracks.at(i).bbox[2] / 2);
-			predictedCentroid[1] = (int)(prediction.at<float>(1) - tracks.at(i).bbox[3] / 2);
-			centroid[0] = centroids.get(i, 0);
-			centroid[1] = centroids.get(i, 1);
+			predictedCentroid[0] = (int)(prediction.at<float>(0) - tracks.at(i-1).bbox[2] / 2);
+			predictedCentroid[1] = (int)(prediction.at<float>(1) - tracks.at(i-1).bbox[3] / 2);
+			centroid[0] = centroids.get(i-1, 0);
+			centroid[1] = centroids.get(i-1, 1);
 			float dist = sqrt(pow((predictedCentroid[0] - centroid[0]), 2) + pow((predictedCentroid[0] - centroid[0]), 2));
 			dist = dist < DMAX ? dist : DMAX;
 			SimilarityMatrix[i][j] = 1 - dist / DMAX;
@@ -175,9 +175,9 @@ void SystemObject::updateUnassignedTracks(t_Mat<int> unassignedTracks,  /*return
 
 	for (int i = 0; i < numUnassignedTracks; i++) {
 //		if (numUnassignedTracks > 0) { 
-			int ind = unassignedTracks.get(0,i);
-			tracks.at(ind).age = tracks.at(ind).age + 1;
-			tracks.at(ind).consecutiveInvisibleCount = tracks.at(ind).consecutiveInvisibleCount + 1;
+			int ind = unassignedTracks.get(i,0);
+			tracks.at(ind-1).age = tracks.at(ind-1).age + 1;
+			tracks.at(ind-1).consecutiveInvisibleCount = tracks.at(ind-1).consecutiveInvisibleCount + 1;
 //		}
 	}
 }
@@ -198,32 +198,38 @@ void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks> tracks)
 	// Find the indices of 'lost' tracks.
 	vector<int> lostInds;
 	for (int i = 0; i < numTraks; i++) {
-		if ((ages.at(i) < AGETHRESHOLD && visibility.at(i) < VISIBILITYTHRESHOLD) || (tracks.at(i).consecutiveInvisibleCount >= INVISIBLEFORTOOLONG)) {
+		if (((ages.at(i) < AGETHRESHOLD && visibility.at(i) < VISIBILITYTHRESHOLD) || (tracks.at(i).consecutiveInvisibleCount >= INVISIBLEFORTOOLONG))) {
 			lostInds.push_back(i);
 		}
 	}
 
 	// Delete lost tracks.
-	for (int i = 0; i < lostInds.size(); i++) {
-		tracks.erase(tracks.begin() + lostInds.at(i));
+#if 0
+	int num_tracks = tracks.size();
+	for (int i = num_tracks - 1; i >= 0; i--) {
+		int ind = lostInds.at(i);
+		if (ind != i)
+			tracks.erase(tracks.begin() + i);
 	}
+#endif // 0
+
 }
 
 t_Mat<double> getUnassignedCentroids(t_Mat<double> centroids, t_Mat<int> unassignedDetections) {
 	t_Mat<double> unassignedDetections_centroids;
 	for (int i = 0; i < unassignedDetections.getSize()[0]; i++) {
 		for (int j = 0; j < CENTROIDDIM; j++) {
-			unassignedDetections_centroids.set(i, j, centroids.get(unassignedDetections.get(0, j), j));
+			unassignedDetections_centroids.set(i, j, centroids.get(unassignedDetections.get(i, 0), j));
 		}
 	}
 	return unassignedDetections_centroids;
 }
 
-t_Mat<int> getUnassignedBbox(t_Mat<double> centroids, t_Mat<int> unassignedDetections) {
+t_Mat<int> getUnassignedBbox(t_Mat<int> bboxes, t_Mat<int> unassignedDetections) {
 	t_Mat<int> unassignedDetections_bboxes;
 	for (int i = 0; i < unassignedDetections.getSize()[0]; i++) {
 		for (int j = 0; j < BBOXDIM; j++) {
-			unassignedDetections_bboxes.set(i, j, centroids.get(unassignedDetections.get(0, j), j));
+			unassignedDetections_bboxes.set(i, j, bboxes.get(unassignedDetections.get(i, 0), j));
 		}
 	}
 	return unassignedDetections_bboxes;
@@ -234,9 +240,9 @@ void SystemObject::createNewTracks(t_Mat<double> centroids, t_Mat<int> bboxes, t
 {
 	// Recuperiamo tutti i centroidi e bbox non assegnati 
 	centroids = getUnassignedCentroids(centroids, unassignedDetections);
-	bboxes = getUnassignedBbox(centroids, unassignedDetections);
+	bboxes = getUnassignedBbox(bboxes, unassignedDetections);
 
-	for (int i = 0; i < centroids.getSize()[0]; i++) {
+	for (int i = 0; i < unassignedDetections.getSize()[0]; i++) {
 		// Create a Kalman filter object.
 		KalmanFilter kalmanFilter(4, 2, 0); /* Stato iniziale, posizione, velocità per x e y */
 		kalmanFilter.transitionMatrix = (Mat_<float>(4, 4) << 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1);
