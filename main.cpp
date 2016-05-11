@@ -19,7 +19,7 @@
 using namespace cv;
 using namespace std;
 
-void displayTrackingResults(Mat, Mat, t_Mat<double>&, t_Mat<int>&);
+void displayTrackingResults(Mat, Mat, t_Mat<double>&, t_Mat<int>&, vector<t_tracks>);
 
 int main(int argc, char** argv)
 {
@@ -40,36 +40,52 @@ int main(int argc, char** argv)
 		frame = imread(toOpen.str(), IMREAD_COLOR);
 
 		obj->detectObjects(frame, /*return*/ centroids, bboxes, mask);
-#if 0
+#if 0	
 		obj->predictNewLocationsOfTracks(tracks);
 		obj->detectionToTrackAssignment(tracks, centroids, /*return*/ assignments, unassignedTracks, unassignedDetections);
 		obj->updateAssignedTracks(centroids, bboxes, assignments, /*return*/ tracks);
 		obj->updateUnassignedTracks(unassignedDetections,  /*return*/ tracks);
 		obj->deleteLostTracks(/*return*/ tracks);
 		obj->createNewTracks(centroids, bboxes, unassignedDetections, /*return*/ nextId, tracks);
-#endif 0
-		displayTrackingResults(frame, mask, centroids,bboxes);
+#endif
+		displayTrackingResults(frame, mask, centroids,bboxes, tracks);
 	}
 
 
 	return 0;
 }
 /*To check drawing rectangles*/
-void displayTrackingResults(Mat frame, Mat mask, t_Mat<double>& centroids, t_Mat<int>& bboxes) {
-	int numTraks = bboxes.getSize()[0];
+void displayTrackingResults(Mat frame, Mat mask, t_Mat<double>& centroids, t_Mat<int>& bboxes, vector<t_tracks> tracks) {
+		int numTraks = bboxes.getSize()[0];
 	for (int i = 0; i < numTraks; i++) {
-		int* cur_box = bboxes.getRowVector(i);
-		Point pt1(cur_box[0], cur_box[1]);
-		Point pt2(cur_box[0]+cur_box[2], cur_box[1]+cur_box[3]);
-		rectangle(frame, pt1, pt2, 0);
+	int cur_box[4] = { bboxes.get(i,0), bboxes.get(i,1),bboxes.get(i,2),bboxes.get(i,3) };
+	Point pt1(cur_box[0], cur_box[1]);
+	Point pt2(cur_box[0]+cur_box[2], cur_box[1]+cur_box[3]);
+	rectangle(frame, pt1, pt2, 0);
+	//putText(img, label, Point(x, y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 2.0);
 	}
 
 	imshow("Display Original", frame);
 	imshow("Display Mask", mask);
 
 	waitKey(0); // Wait for a keystroke in the window
-}
 
+
+/*
+	int numTraks = tracks.size();
+	for (int i = 0; i < numTraks; i++) {
+		int* cur_box = tracks.at(i).bbox;
+		Point pt1(cur_box[0], cur_box[1]);
+		Point pt2(cur_box[0]+cur_box[2], cur_box[1]+cur_box[3]);
+		rectangle(frame, pt1, pt2, 0);
+		putText(frame, ""+tracks.at(i).id, pt1, FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 2.0);
+	}
+
+	imshow("Display Original", frame);
+	imshow("Display Mask", mask);
+
+	waitKey(0); // Wait for a keystroke in the window*/
+}
 
 
 // [VISIONE ARTIFICIALE]-Tracking

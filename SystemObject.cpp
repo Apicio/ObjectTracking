@@ -3,6 +3,7 @@
 #include "opencv2/video/tracking.hpp"
 #define CENTROIDDIM 2
 #define BBOXDIM 4
+#define DELETED 0
 
 using namespace cv;
 using namespace std;
@@ -78,14 +79,14 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 	for (int j = 1; j < nTracks + 1; j++)
 		SimilarityMatrix[0][j] = j;
 	// Popolazione della matrice di Similarità: calcolo misura di similarità
-	for (int i = 1; i < nTracks + 1; i++) {
-		for (int j = 1; j < nDetections + 1; j++) {
+	for (int i = 1; i < nDetections + 1; i++) {
+		for (int j = 1; j < nTracks + 1; j++) {
 
-			Mat prediction = tracks.at(i-1).kalmanFilter.predict();
+			Mat prediction = tracks.at(j-1).kalmanFilter.predict();
 			int predictedCentroid[2];
 			int centroid[2];
-			predictedCentroid[0] = (int)(prediction.at<float>(0) - tracks.at(i-1).bbox[2] / 2);
-			predictedCentroid[1] = (int)(prediction.at<float>(1) - tracks.at(i-1).bbox[3] / 2);
+			predictedCentroid[0] = (int)(prediction.at<float>(0) - tracks.at(j-1).bbox[2] / 2);
+			predictedCentroid[1] = (int)(prediction.at<float>(1) - tracks.at(j-1).bbox[3] / 2);
 			centroid[0] = centroids.get(i-1, 0);
 			centroid[1] = centroids.get(i-1, 1);
 			float dist = sqrt(pow((predictedCentroid[0] - centroid[0]), 2) + pow((predictedCentroid[0] - centroid[0]), 2));
@@ -94,19 +95,19 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 		}
 	}
 
-	int max; int max_i; int max_j;
+	int max; int max_i=1; int max_j=1;
 	int num_of_assignments = 0;
 	do {
-		max = 0; max_i = 0; max_j = 0;
-		for (int i = 1; i < nTracks + 1; i++) {
-			while (i < nTracks + 1 && SimilarityMatrix[i][0] == 0) {
+		max = 0; max_i = 1; max_j = 1;
+		for (int i = 1; i < nDetections + 1; i++) {
+			while (i < nDetections + 1 && SimilarityMatrix[i][0] == DELETED) {
 				i++; // Salto le righe cancellate
 			}
-			for (int j = 1; j < nDetections + 1; j++) {
-				while (j < nDetections + 1 && SimilarityMatrix[0][j] == 0) {
+			for (int j = 1; j < nTracks + 1; j++) {
+				while (j < nTracks + 1 && SimilarityMatrix[0][j] == DELETED) {
 					j++; // Salto le colonne cancellate
 				}
-				if (i < nTracks + 1 && j < nDetections + 1 && SimilarityMatrix[i][j] > max) {
+				if (i < nDetections + 1 && j < nTracks + 1 && SimilarityMatrix[i][j] > max) {
 					max = SimilarityMatrix[i][j];
 					max_i = i;
 					max_j = j;
@@ -116,12 +117,12 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 		int a = 1;
 		if (max > THRESHOLD) {
 			// Salvo l'assegnazione
-			assignments.set(num_of_assignments, 0, max_i); /* Assign trackIdx */
-			assignments.set(num_of_assignments, 1, max_j); /* Assign detectionIdx */
+			assignments.set(num_of_assignments, 0, max_i-1); /* Assign trackIdx */
+			assignments.set(num_of_assignments, 1, max_j-1); /* Assign detectionIdx */
 			num_of_assignments++;
 			// Cancello le righe/colonne utilizzate
-			SimilarityMatrix[max_i][0] = 0;
-			SimilarityMatrix[max_j][0] = 0;
+			SimilarityMatrix[max_i][0] = DELETED;
+			SimilarityMatrix[0][max_j] = DELETED;
 		}
 	} while (max > THRESHOLD);
 
@@ -129,7 +130,7 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 	
 	int num_of_unassignedDetections = 0;
 	for (int i = 1; i < nDetections + 1; i++)
-		if (SimilarityMatrix[i][0] == i) {
+		if (SimilarityMatrix[i][0] != DELETED) {
 			unassignedDetections.set(num_of_unassignedDetections, 0, i);
 			num_of_unassignedDetections++;
 		}
@@ -137,18 +138,17 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 	// Verifico Oggetti non assegnati
 	int num_of_unassignedTracks = 0;
 	for (int j = 1; j < nTracks + 1; j++)
-		if (SimilarityMatrix[0][j] == j) {
+		if (SimilarityMatrix[0][j] != DELETED) {
 			unassignedTracks.set(num_of_unassignedTracks, 0, j);
 			num_of_unassignedTracks++;
 		}
-	int a = 1;
 }
 void SystemObject::updateAssignedTracks(t_Mat<double> centroids, t_Mat<int> bboxes, t_Mat<int> assignments, /*return*/ vector<t_tracks>& tracks)
 {
 	int numAssignedTracks = assignments.getSize()[1];
 	for (int i = 0; i < numAssignedTracks; i++) {
-		int trackIdx = assignments.get(0,i);
-		int detectionIdx = assignments.get(1,i);
+		int trackIdx = assignments.get(i,0);
+		int detectionIdx = assignments.get(i,1);
 		int centroid[2]; /* x,y */
 		centroid[0] = centroids.get(detectionIdx, 0);
 		centroid[1] = centroids.get(detectionIdx, 1);
@@ -202,20 +202,15 @@ void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks> tracks)
 	// Find the indices of 'lost' tracks.
 	vector<int> lostInds;
 	for (int i = 0; i < numTraks; i++) {
-		if (((ages.at(i) < AGETHRESHOLD && visibility.at(i) < VISIBILITYTHRESHOLD) || (tracks.at(i).consecutiveInvisibleCount >= INVISIBLEFORTOOLONG))) {
+		if (!((ages.at(i) < AGETHRESHOLD && visibility.at(i) < VISIBILITYTHRESHOLD) || (tracks.at(i).consecutiveInvisibleCount >= INVISIBLEFORTOOLONG))) {
 			lostInds.push_back(i);
 		}
 	}
 
 	// Delete lost tracks.
-#if 0
-	int num_tracks = tracks.size();
-	for (int i = num_tracks - 1; i >= 0; i--) {
-		int ind = lostInds.at(i);
-		if (ind != i)
-			tracks.erase(tracks.begin() + i);
+	for (int i = lostInds.size() - 1; i >= 0; i--) {
+		tracks.erase(tracks.begin() + lostInds.at(i));
 	}
-#endif // 0
 
 }
 
