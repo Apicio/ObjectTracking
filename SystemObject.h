@@ -1,5 +1,6 @@
 #pragma once
 
+#include <opencv2/video/background_segm.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
 #include "opencv2/opencv.hpp"
@@ -32,7 +33,7 @@ private:
 	Ptr<BackgroundSubtractor> pMOG;
 public:
 	SystemObject() {
-		pMOG = createBackgroundSubtractorMOG2(40, 32, false); /*history, ngaussianMixuter, shadows*/
+		pMOG = createBackgroundSubtractorKNN(500, 400, false); /*history, ngaussianMixuter, shadows*/
 	};
 	void detectObjects(const Mat, t_Mat<double>&, t_Mat<int>&, Mat&);
 	void predictNewLocationsOfTracks(vector<t_tracks>);

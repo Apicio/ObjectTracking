@@ -15,8 +15,10 @@ void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& cent
 
 	/*Background Subtraction*/
 	pMOG->apply(frame, mask);
-	kernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
-	morphologyEx(mask, mask, MORPH_OPEN, kernel);
+	kernel = getStructuringElement(MORPH_RECT, Size(5, 5));
+	morphologyEx(mask, mask, MORPH_OPEN, kernel); // Opening to remove spikes and noise (erode + dilate)
+	kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+	morphologyEx(mask, mask, MORPH_CLOSE, kernel); // Closing to fill holes (dilate + erode)
 	/*Blobs Detection, compute centroids and bboxes*/
 	int nLabels = connectedComponentsWithStats(mask,labels, stats,centroid);
 	
@@ -30,6 +32,7 @@ void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& cent
 			/* bboxes organized as column matrix with 4 columns:
 
 			| topmoseleft_corner | horizonal_size | vertical_size | area | */
+			
 
  			bboxes.set(num_blob, 0, stats.at<int>(i, CC_STAT_LEFT)); //topmost left corner of bbox
 			bboxes.set(num_blob, 1, stats.at<int>(i, CC_STAT_TOP));
@@ -38,7 +41,8 @@ void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& cent
 			num_blob++;
 		}
 	}
-	int a = 1;
+	
+  	int a = 1;
 }
 
 void SystemObject::predictNewLocationsOfTracks(vector<t_tracks> tracks) {
