@@ -40,13 +40,14 @@ int main(int argc, char** argv)
 		frame = imread(toOpen.str(), IMREAD_COLOR);
 
 		obj->detectObjects(frame, /*return*/ centroids, bboxes, mask);
+#if 0
 		obj->predictNewLocationsOfTracks(tracks);
 		obj->detectionToTrackAssignment(tracks, centroids, /*return*/ assignments, unassignedTracks, unassignedDetections);
 		obj->updateAssignedTracks(centroids, bboxes, assignments, /*return*/ tracks);
 		obj->updateUnassignedTracks(unassignedDetections,  /*return*/ tracks);
 		obj->deleteLostTracks(/*return*/ tracks);
 		obj->createNewTracks(centroids, bboxes, unassignedDetections, /*return*/ nextId, tracks);
-
+#endif 0
 		displayTrackingResults(frame, mask, centroids,bboxes);
 	}
 
