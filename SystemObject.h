@@ -15,7 +15,7 @@
 #define THRESHOLD 0.7
 #define INVISIBLEFORTOOLONG 20
 #define AGETHRESHOLD 8
-#define VISIBILITYTHRESHOLD 8
+#define VISIBILITYTHRESHOLD 0.6
 #define DMAX 0.5
 #define MINAREA 100
 #define MAXAREA 5000
@@ -29,7 +29,7 @@ private:
 	Ptr<BackgroundSubtractor> pMOG;
 public:
 	SystemObject() {
-		pMOG = createBackgroundSubtractorMOG2(500, 32, false); /*history, ngaussianMixuter, shadows*/
+		pMOG = createBackgroundSubtractorKNN(500, 400, false); /*history, ngaussianMixuter, shadows*/
 	};
 	void detectObjects(const Mat, vector<double*>&, vector<double*>&, Mat&);
 	void predictNewLocationsOfTracks(vector<t_tracks>&);

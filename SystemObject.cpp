@@ -197,7 +197,10 @@ void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks>& tracks)
 	// Find the indices of 'lost' tracks.
 	vector<int> lostInds;
 	for (int i = 0; i < numTraks; i++) {
-		if (!((ages.at(i) < AGETHRESHOLD && visibility.at(i) < VISIBILITYTHRESHOLD) || (tracks.at(i).consecutiveInvisibleCount >= INVISIBLEFORTOOLONG))) {
+		/* Gestiamo i miss: se age<soglia la traccia è stata presente per poco tempo nella scena, cancella
+		   Gestiamo i casi in cui un oggetto esce dalla scena: se la visibilità è inferiore al VISIBILITYTHRESHOLD l'oggetto ha lasciato la scena e viene cancellato 
+		   Gestiamo i casi in cui un oggetto diventa ghost per troppo tempo */
+		if (((ages.at(i) < AGETHRESHOLD && visibility.at(i) < VISIBILITYTHRESHOLD) || (tracks.at(i).consecutiveInvisibleCount >= INVISIBLEFORTOOLONG))) {
 			lostInds.push_back(i);
 		}
 	}
