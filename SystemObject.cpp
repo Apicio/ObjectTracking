@@ -83,6 +83,7 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, vector<dou
 
 			Mat prediction = tracks.at(j-1).kalmanFilter.predict(); // non predice posizione
 			int predictedCentroid[2];
+			printf("p1=%f,p2=%f", prediction.at<float>(0), prediction.at<float>(1));
 			predictedCentroid[0] = (double)(prediction.at<float>(0) - tracks.at(j-1).bbox[2] / 2);
 			predictedCentroid[1] = (double)(prediction.at<float>(1) - tracks.at(j-1).bbox[3] / 2);
 			float dist = sqrt(pow(predictedCentroid[0] - centroids.at(i - 1)[0],/*^*/2) + pow(predictedCentroid[1] - centroids.at(i - 1)[1],/*^*/2));
@@ -232,34 +233,34 @@ void SystemObject::createNewTracks(vector<double*> centroids, vector<double*> bb
 	for (int i = 0; i < unassignedDetections.size(); i++) {
 		// Create a Kalman filter object.
 		KalmanFilter kalmanFilter(4, 2, 0); /* Stato iniziale, posizione, velocità per x e y */
-		kalmanFilter.transitionMatrix = (Mat_<float>(4, 4) << 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1);
-		Mat_<float> measurement(2, 1); measurement.setTo(Scalar(0));
-
-		kalmanFilter.statePre.at<float>(0) = centroids.at(i)[0];
-		kalmanFilter.statePre.at<float>(1) = centroids.at(i)[1];
+		kalmanFilter.transitionMatrix = (Mat_<float>(4, 4) << 1, 0, 1, 0, 
+															  0, 1, 0, 1,	
+															  0, 0, 1, 0, 
+															  0, 0, 0, 1);
+		kalmanFilter.statePre.at<float>(0) = (float) centroids.at(i)[0];
+		kalmanFilter.statePre.at<float>(1) = (float) centroids.at(i)[1];
 		kalmanFilter.statePre.at<float>(2) = 0;
 		kalmanFilter.statePre.at<float>(3) = 0;
-
 		setIdentity(kalmanFilter.measurementMatrix);
 		setIdentity(kalmanFilter.processNoiseCov, Scalar::all(1e-4));
 		setIdentity(kalmanFilter.measurementNoiseCov, Scalar::all(10));
 		setIdentity(kalmanFilter.errorCovPost, Scalar::all(.1));
 
 		// Create a new track
-		t_tracks track;
-		track.id = nextId;
+		t_tracks* track = new t_tracks();
+		track->id = nextId;
 		double* temp_bbox = new double[4];
 		temp_bbox[0] = bboxes.at(i)[0];
 		temp_bbox[1] = bboxes.at(i)[1];
 		temp_bbox[2] = bboxes.at(i)[2];
 		temp_bbox[3] = bboxes.at(i)[3];
-		track.bbox = temp_bbox;
-		track.kalmanFilter = kalmanFilter;
-		track.age = 1;
-		track.totalVisibleCount = 1;
-		track.consecutiveInvisibleCount = 0;
+		track->bbox = temp_bbox;
+		track->kalmanFilter = kalmanFilter;
+		track->age = 1;
+		track->totalVisibleCount = 1;
+		track->consecutiveInvisibleCount = 0;
 		// Add it to the array of tracks.
-		tracks.push_back(track);
+		tracks.push_back(*track);
 		// Increment the next id.
 		nextId++;
 	}
