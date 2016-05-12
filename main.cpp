@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 	//	obj->predictNewLocationsOfTracks(tracks);
 		obj->detectionToTrackAssignment(tracks, centroids, /*return*/ assignments, unassignedTracks, unassignedDetections);
 		obj->updateAssignedTracks(centroids, bboxes, assignments, /*return*/ tracks);
-		obj->updateUnassignedTracks(unassignedDetections,  /*return*/ tracks);
+		obj->updateUnassignedTracks(unassignedTracks,  /*return*/ tracks);
 		obj->deleteLostTracks(/*return*/ tracks);
 		obj->createNewTracks(centroids, bboxes, unassignedDetections, /*return*/ nextId, tracks);
 		displayTrackingResults(frame, mask, centroids,bboxes, tracks);
