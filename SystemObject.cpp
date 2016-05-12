@@ -28,12 +28,12 @@ void SystemObject::detectObjects(const Mat frame, /*return*/ vector<double*>& ce
 		float area = stats.at<int>(i, CC_STAT_AREA);
 		if (area < MAXAREA && area > MINAREA) {
 			double* cent = new  double[2];
-			cent[0] = centroid.at<double>(i, 0);
-			cent[1] = centroid.at<double>(i, 1);
+			cent[0] = centroid.at<double>(i, 0);        /*X*/
+			cent[1] = centroid.at<double>(i, 1);	    /*Y*/
 			centroids.push_back(cent); //x,y coord of centroid
 			double* box = new double[4];
-			box[0] = stats.at<int>(i, CC_STAT_LEFT); /*topmost left corner of bbox*/
-			box[1] = stats.at<int>(i, CC_STAT_TOP);
+			box[0] = stats.at<int>(i, CC_STAT_LEFT);	/*X*/
+			box[1] = stats.at<int>(i, CC_STAT_TOP);		/*Y*/
 			box[2] = stats.at<int>(i, CC_STAT_WIDTH);
 			box[3] = stats.at<int>(i, CC_STAT_HEIGHT);
 			bboxes.push_back(box);
@@ -87,20 +87,20 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, vector<dou
 			predictedCentroid[0] = (double)(prediction.at<float>(0) - tracks.at(j-1).bbox[2] / 2);
 			predictedCentroid[1] = (double)(prediction.at<float>(1) - tracks.at(j-1).bbox[3] / 2);*/
 			//Ricavo centroide dalla traccia
-			int width = tracks.at(j-1).bbox[3];
-			int heigh = tracks.at(j-1).bbox[2];
-			int y = tracks.at(j-1).bbox[0];
-			int x = tracks.at(j-1).bbox[1];
-			double currCent[2] = {  x + width / 2,y + heigh / 2 };
+			int width = tracks.at(j-1).bbox[2];
+			int heigh = tracks.at(j-1).bbox[3];
+			int y = tracks.at(j-1).bbox[1];
+			int x = tracks.at(j-1).bbox[0];
+			double currCent[2] = { x + width / 2, y + heigh / 2};
+			double prevCent[2] = { centroids.at(i - 1)[0], centroids.at(i - 1)[1] };
 
-
-			float dist = sqrt(pow(currCent[0] - centroids.at(i - 1)[0],/*^*/2) + pow(currCent[1] - centroids.at(i - 1)[1],/*^*/2));
+			float dist = sqrt(pow(currCent[0] - prevCent[0],/*^*/2) + pow(currCent[1] - prevCent[1],/*^*/2));
 			dist = dist < DMAX ? dist : DMAX;
 			SimilarityMatrix[i][j] = 1 - dist / DMAX;
 		}
 	}
 
-	int max; int max_i=1; int max_j=1;
+	double max; int max_i=1; int max_j=1;
 	int num_of_assignments = 0;
 	do {
 		max = 0; max_i = 1; max_j = 1;
@@ -122,8 +122,8 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, vector<dou
 		if (max > THRESHOLD) {
 			// Salvo l'assegnazione
 			int* ax = new int[2];
-			ax[0] = max_i - 1; /* Assign trackIdx */
-			ax[1] = max_j - 1; /* Assign detectionIdx */
+			ax[0] = max_i - 1; /* Assign detectionIdx */
+			ax[1] = max_j - 1; /* Assign trackIdx */
 			assignments.push_back(ax);
 			// Cancello le righe/colonne utilizzate
 			SimilarityMatrix[max_i][0] = DELETED;
@@ -147,12 +147,12 @@ void SystemObject::updateAssignedTracks(vector<double*> centroids, vector<double
 {
 	int numAssignedTracks = assignments.size();
 	for (int i = 0; i < numAssignedTracks; i++) {
-		int trackIdx = assignments.at(i)[0];
-		int detectionIdx = assignments.at(i)[1];
+		int trackIdx = assignments.at(i)[1];
+		int detectionIdx = assignments.at(i)[0];
 		// Correct the estimate of the object's location using the new detection.
 		Mat_<float> measurement(2, 1); measurement.setTo(Scalar(0));
-		measurement(0) = centroids.at(detectionIdx)[0];
-		measurement(1) = centroids.at(detectionIdx)[1];
+		measurement(0) = centroids.at(detectionIdx)[1]; //TODO fix x,y
+		measurement(1) = centroids.at(detectionIdx)[0];
 		tracks.at(trackIdx).kalmanFilter.correct(measurement) ;
 		// Replace predicted bounding box with detected bounding box.
 		double* bbox = new double[4]; /* x,y,w,h*/
@@ -186,21 +186,14 @@ void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks>& tracks)
 	if (numTraks == 0)
 		return;
 
-	// Compute the fraction of the track's age for which it was visible.
-	vector<int> ages, totalVisibleCounts;
-	vector<double> visibility;
-	for (int i = 0; i < numTraks; i++) {
-		ages.push_back(tracks.at(i).age);
-		totalVisibleCounts.push_back(tracks.at(i).totalVisibleCount);
-		visibility.push_back(tracks.at(i).totalVisibleCount/tracks.at(i).age);
-	}
 	// Find the indices of 'lost' tracks.
+	/* Gestiamo i miss: se age<soglia la traccia è stata presente per poco tempo nella scena, cancella
+	Gestiamo i casi in cui un oggetto esce dalla scena: se la visibilità è inferiore al VISIBILITYTHRESHOLD l'oggetto ha lasciato la scena e viene cancellato
+	Gestiamo i casi in cui un oggetto diventa ghost per troppo tempo */
 	vector<int> lostInds;
 	for (int i = 0; i < numTraks; i++) {
-		/* Gestiamo i miss: se age<soglia la traccia è stata presente per poco tempo nella scena, cancella
-		   Gestiamo i casi in cui un oggetto esce dalla scena: se la visibilità è inferiore al VISIBILITYTHRESHOLD l'oggetto ha lasciato la scena e viene cancellato 
-		   Gestiamo i casi in cui un oggetto diventa ghost per troppo tempo */
-		if (((ages.at(i) < AGETHRESHOLD && visibility.at(i) < VISIBILITYTHRESHOLD) || (tracks.at(i).consecutiveInvisibleCount >= INVISIBLEFORTOOLONG))) {
+		double visibility = tracks.at(i).totalVisibleCount / tracks.at(i).age;
+		if (((tracks.at(i).age < AGETHRESHOLD && visibility < VISIBILITYTHRESHOLD) || (tracks.at(i).consecutiveInvisibleCount >= INVISIBLEFORTOOLONG))) {
 			lostInds.push_back(i);
 		}
 	}
