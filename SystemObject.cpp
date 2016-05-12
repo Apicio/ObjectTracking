@@ -8,7 +8,7 @@
 using namespace cv;
 using namespace std;
 
-void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& centroids, t_Mat<int>& bboxes, Mat& mask)
+void SystemObject::detectObjects(const Mat frame, /*return*/ vector<double*>& centroids, vector<double*>& bboxes, Mat& mask)
 {
 	vector<KeyPoint> keypoints;  	
 	Mat keyPointImage; Mat kernel; Mat labels; Mat centroid; Mat stats;
@@ -27,34 +27,33 @@ void SystemObject::detectObjects(const Mat frame, /*return*/ t_Mat<double>& cent
 	for (int i = 0; i < nLabels; i++) {
 		float area = stats.at<int>(i, CC_STAT_AREA);
 		if (area < MAXAREA && area > MINAREA) {
-			centroids.set(num_blob, 0, centroid.at<double>(i, 0)); //x coord of centroid
-			centroids.set(num_blob, 1, centroid.at<double>(i, 1)); //y coord of centroid
-
-			/* bboxes organized as column matrix with 4 columns:
-
-			| topmoseleft_corner | horizonal_size | vertical_size | area | */
-			
-
- 			bboxes.set(num_blob, 0, stats.at<int>(i, CC_STAT_LEFT)); //topmost left corner of bbox
-			bboxes.set(num_blob, 1, stats.at<int>(i, CC_STAT_TOP));
-			bboxes.set(num_blob, 2, stats.at<int>(i, CC_STAT_WIDTH)); //horizontal size of bbox
-			bboxes.set(num_blob, 3, stats.at<int>(i, CC_STAT_HEIGHT)); //vertical size of bbox
-			num_blob++;
+			double* cent = new  double[2];
+			cent[0] = centroid.at<double>(i, 0);
+			cent[1] = centroid.at<double>(i, 1);
+			centroids.push_back(cent); //x,y coord of centroid
+			double* box = new double[4];
+			box[0] = stats.at<int>(i, CC_STAT_LEFT); /*topmost left corner of bbox*/
+			box[1] = stats.at<int>(i, CC_STAT_TOP);
+			box[2] = stats.at<int>(i, CC_STAT_WIDTH);
+			box[3] = stats.at<int>(i, CC_STAT_HEIGHT);
+			bboxes.push_back(box);
 		}
 	}
-	
-  	int a = 1;
 }
 
-void SystemObject::predictNewLocationsOfTracks(vector<t_tracks> tracks) {
+void SystemObject::predictNewLocationsOfTracks(vector<t_tracks>& tracks) {
 	for (int i = 1; i < tracks.size(); i++) {
-		int* bbox = tracks.at(i).bbox;	/* Posizione nell'immagine [0] e [1] e dimensione del box [2] e [3] */
-		int predictedCentroid[2];		/* x, y */
+		double* bbox = tracks.at(i).bbox;	/* Posizione nell'immagine [0] e [1] e dimensione del box [2] e [3] */
+		double predictedCentroid[2];		/* x, y */
 		// Predict the current location of the track.
 		Mat prediction = tracks.at(i).kalmanFilter.predict();
 		predictedCentroid[0] = (int)(prediction.at<float>(0) - bbox[2] / 2);
 		predictedCentroid[1] = (int)(prediction.at<float>(1) - bbox[3] / 2);
-		int n_bbox[4] = {predictedCentroid[0], predictedCentroid[1], bbox[2], bbox[3]};
+		double* n_bbox = new double[4];
+		n_bbox[0] = predictedCentroid[0];
+		n_bbox[1] = predictedCentroid[1];
+		n_bbox[2] = bbox[2];
+		n_bbox[3] = bbox[3];
 		tracks.at(i).bbox = n_bbox;
 	}
 }
@@ -66,10 +65,10 @@ void SystemObject::predictNewLocationsOfTracks(vector<t_tracks> tracks) {
 	@Return unassignedTracks: Tracce non ancora assegnate, probabile Ghost
 	@Return unassignedDetections: Blob non ancora assegnato, probabile nuovo oggetto nella scena
 */
-void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<double> centroids, /*return*/ t_Mat<int>& assignments, t_Mat<int>& unassignedTracks, t_Mat<int>& unassignedDetections)
+void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, vector<double*> centroids, /*return*/ vector<int*>& assignments, vector<int>& unassignedTracks, vector<int>& unassignedDetections) 
 {
 	int nTracks = tracks.size();
-	int nDetections = centroids.getSize()[0]; /* Numero di riga rappresenta il numero di Blob individuati*/
+	int nDetections = centroids.size(); /* Numero di riga rappresenta il numero di Blob individuati*/
 	// Compute the cost of assigning each detection to each track.
 	double SimilarityMatrix[HEIGHT + 1][WEIGHT + 1];
 
@@ -82,14 +81,11 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 	for (int i = 1; i < nDetections + 1; i++) {
 		for (int j = 1; j < nTracks + 1; j++) {
 
-			Mat prediction = tracks.at(j-1).kalmanFilter.predict();
+			Mat prediction = tracks.at(j-1).kalmanFilter.predict(); // non predice posizione
 			int predictedCentroid[2];
-			int centroid[2];
-			predictedCentroid[0] = (int)(prediction.at<float>(0) - tracks.at(j-1).bbox[2] / 2);
-			predictedCentroid[1] = (int)(prediction.at<float>(1) - tracks.at(j-1).bbox[3] / 2);
-			centroid[0] = centroids.get(i-1, 0);
-			centroid[1] = centroids.get(i-1, 1);
-			float dist = sqrt(pow((predictedCentroid[0] - centroid[0]), 2) + pow((predictedCentroid[0] - centroid[0]), 2));
+			predictedCentroid[0] = (double)(prediction.at<float>(0) - tracks.at(j-1).bbox[2] / 2);
+			predictedCentroid[1] = (double)(prediction.at<float>(1) - tracks.at(j-1).bbox[3] / 2);
+			float dist = sqrt(pow(predictedCentroid[0] - centroids.at(i - 1)[0],/*^*/2) + pow(predictedCentroid[1] - centroids.at(i - 1)[1],/*^*/2));
 			dist = dist < DMAX ? dist : DMAX;
 			SimilarityMatrix[i][j] = 1 - dist / DMAX;
 		}
@@ -114,12 +110,12 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 				}
 			}				
 		}
-		int a = 1;
 		if (max > THRESHOLD) {
 			// Salvo l'assegnazione
-			assignments.set(num_of_assignments, 0, max_i-1); /* Assign trackIdx */
-			assignments.set(num_of_assignments, 1, max_j-1); /* Assign detectionIdx */
-			num_of_assignments++;
+			int* ax = new int[2];
+			ax[0] = max_i - 1; /* Assign trackIdx */
+			ax[1] = max_j - 1; /* Assign detectionIdx */
+			assignments.push_back(ax);
 			// Cancello le righe/colonne utilizzate
 			SimilarityMatrix[max_i][0] = DELETED;
 			SimilarityMatrix[0][max_j] = DELETED;
@@ -127,42 +123,34 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, t_Mat<doub
 	} while (max > THRESHOLD);
 
 	// Verifico Blob non assegnati
-	
-	int num_of_unassignedDetections = 0;
 	for (int i = 1; i < nDetections + 1; i++)
 		if (SimilarityMatrix[i][0] != DELETED) {
-			unassignedDetections.set(num_of_unassignedDetections, 0, i);
-			num_of_unassignedDetections++;
+			unassignedDetections.push_back(i-1);
 		}
 
 	// Verifico Oggetti non assegnati
-	int num_of_unassignedTracks = 0;
 	for (int j = 1; j < nTracks + 1; j++)
 		if (SimilarityMatrix[0][j] != DELETED) {
-			unassignedTracks.set(num_of_unassignedTracks, 0, j);
-			num_of_unassignedTracks++;
+			unassignedTracks.push_back(j-1);
 		}
 }
-void SystemObject::updateAssignedTracks(t_Mat<double> centroids, t_Mat<int> bboxes, t_Mat<int> assignments, /*return*/ vector<t_tracks>& tracks)
+void SystemObject::updateAssignedTracks(vector<double*> centroids, vector<double*> bboxes, vector<int*> assignments, /*return*/ vector<t_tracks>& tracks) 
 {
-	int numAssignedTracks = assignments.getSize()[1];
+	int numAssignedTracks = assignments.size();
 	for (int i = 0; i < numAssignedTracks; i++) {
-		int trackIdx = assignments.get(i,0);
-		int detectionIdx = assignments.get(i,1);
-		int centroid[2]; /* x,y */
-		centroid[0] = centroids.get(detectionIdx, 0);
-		centroid[1] = centroids.get(detectionIdx, 1);
-		int bbox[4]; /* x,y,w,h*/
-		bbox[0] = bboxes.get(detectionIdx, 0);
-		bbox[1] = bboxes.get(detectionIdx, 1);
-		bbox[2] = bboxes.get(detectionIdx, 2);
-		bbox[3] = bboxes.get(detectionIdx, 3);
+		int trackIdx = assignments.at(i)[0];
+		int detectionIdx = assignments.at(i)[1];
 		// Correct the estimate of the object's location using the new detection.
 		Mat_<float> measurement(2, 1); measurement.setTo(Scalar(0));
-		measurement(0) = centroid[0];
-		measurement(1) = centroid[1];
+		measurement(0) = centroids.at(detectionIdx)[0];
+		measurement(1) = centroids.at(detectionIdx)[1];
 		tracks.at(trackIdx).kalmanFilter.correct(measurement) ;
 		// Replace predicted bounding box with detected bounding box.
+		double* bbox = new double[4]; /* x,y,w,h*/
+		bbox[0] = bboxes.at(detectionIdx)[0];
+		bbox[1] = bboxes.at(detectionIdx)[1];
+		bbox[2] = bboxes.at(detectionIdx)[2];
+		bbox[3] = bboxes.at(detectionIdx)[3];
 		tracks.at(trackIdx).bbox = bbox;
 		// Update track's age.
 		tracks.at(trackIdx).age = tracks.at(trackIdx).age + 1;
@@ -171,21 +159,19 @@ void SystemObject::updateAssignedTracks(t_Mat<double> centroids, t_Mat<int> bbox
 		tracks.at(trackIdx).consecutiveInvisibleCount = 0;
 	}
 }
-void SystemObject::updateUnassignedTracks(t_Mat<int> unassignedTracks,  /*return*/ vector<t_tracks>& tracks)
+void SystemObject::updateUnassignedTracks(vector<int> unassignedTracks,  /*return*/ vector<t_tracks>& tracks) 
 {
-	int numUnassignedTracks = unassignedTracks.getSize()[0];
+	int numUnassignedTracks = unassignedTracks.size();
 	if (numUnassignedTracks > tracks.size())
 		return;
 
 	for (int i = 0; i < numUnassignedTracks; i++) {
-//		if (numUnassignedTracks > 0) { 
-			int ind = unassignedTracks.get(i,0);
-			tracks.at(ind-1).age = tracks.at(ind-1).age + 1;
-			tracks.at(ind-1).consecutiveInvisibleCount = tracks.at(ind-1).consecutiveInvisibleCount + 1;
-//		}
+			int ind = unassignedTracks.at(i);
+			tracks.at(ind).age = tracks.at(ind).age + 1;
+			tracks.at(ind).consecutiveInvisibleCount = tracks.at(ind).consecutiveInvisibleCount + 1;
 	}
 }
-void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks> tracks)
+void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks>& tracks)
 {
 	int numTraks = tracks.size();
 	if (numTraks == 0)
@@ -206,7 +192,7 @@ void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks> tracks)
 			lostInds.push_back(i);
 		}
 	}
-
+	 
 	// Delete lost tracks.
 	for (int i = lostInds.size() - 1; i >= 0; i--) {
 		tracks.erase(tracks.begin() + lostInds.at(i));
@@ -214,41 +200,43 @@ void SystemObject::deleteLostTracks(/*return*/ vector<t_tracks> tracks)
 
 }
 
-t_Mat<double> getUnassignedCentroids(t_Mat<double> centroids, t_Mat<int> unassignedDetections) {
-	t_Mat<double> unassignedDetections_centroids;
-	for (int i = 0; i < unassignedDetections.getSize()[0]; i++) {
-		for (int j = 0; j < CENTROIDDIM; j++) {
-			unassignedDetections_centroids.set(i, j, centroids.get(unassignedDetections.get(i, 0), j));
-		}
+vector<double*> getUnassignedCentroids(vector<double*> centroids, vector<int> unassignedDetections) {
+	vector<double*> unassignedDetections_centroids;
+	for (int i = 0; i < unassignedDetections.size(); i++) {
+		double* cent = new double[2];
+		cent[0] = centroids.at(unassignedDetections.at(i))[0];
+		cent[1] = centroids.at(unassignedDetections.at(i))[1];
+		unassignedDetections_centroids.push_back(cent);
 	}
 	return unassignedDetections_centroids;
 }
 
-t_Mat<int> getUnassignedBbox(t_Mat<int> bboxes, t_Mat<int> unassignedDetections) {
-	t_Mat<int> unassignedDetections_bboxes;
-	for (int i = 0; i < unassignedDetections.getSize()[0]; i++) {
-		for (int j = 0; j < BBOXDIM; j++) {
-			unassignedDetections_bboxes.set(i, j, bboxes.get(unassignedDetections.get(i, 0), j));
-		}
+vector<double*> getUnassignedBbox(vector<double*> bboxes, vector<int> unassignedDetections) {
+	vector<double*> unassignedDetections_bboxes;
+	for (int i = 0; i < unassignedDetections.size(); i++) {
+		double* box = new double[4];
+		box[0] = bboxes.at(unassignedDetections.at(i))[0];
+		box[1] = bboxes.at(unassignedDetections.at(i))[1];
+		box[2] = bboxes.at(unassignedDetections.at(i))[2];
+		box[3] = bboxes.at(unassignedDetections.at(i))[3];
+		unassignedDetections_bboxes.push_back(box);
 	}
 	return unassignedDetections_bboxes;
 }
 
-
-void SystemObject::createNewTracks(t_Mat<double> centroids, t_Mat<int> bboxes, t_Mat<int> unassignedDetections, /*return*/ int& nextId, vector<t_tracks>& tracks)
-{
+void SystemObject::createNewTracks(vector<double*> centroids, vector<double*> bboxes, vector<int> unassignedDetections, /*return*/ int& nextId, vector<t_tracks>& tracks) {
 	// Recuperiamo tutti i centroidi e bbox non assegnati 
 	centroids = getUnassignedCentroids(centroids, unassignedDetections);
 	bboxes = getUnassignedBbox(bboxes, unassignedDetections);
 
-	for (int i = 0; i < unassignedDetections.getSize()[0]; i++) {
+	for (int i = 0; i < unassignedDetections.size(); i++) {
 		// Create a Kalman filter object.
 		KalmanFilter kalmanFilter(4, 2, 0); /* Stato iniziale, posizione, velocità per x e y */
 		kalmanFilter.transitionMatrix = (Mat_<float>(4, 4) << 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1);
 		Mat_<float> measurement(2, 1); measurement.setTo(Scalar(0));
 
-		kalmanFilter.statePre.at<float>(0) = centroids.get(i,0);
-		kalmanFilter.statePre.at<float>(1) = centroids.get(i,1);
+		kalmanFilter.statePre.at<float>(0) = centroids.at(i)[0];
+		kalmanFilter.statePre.at<float>(1) = centroids.at(i)[1];
 		kalmanFilter.statePre.at<float>(2) = 0;
 		kalmanFilter.statePre.at<float>(3) = 0;
 
@@ -260,7 +248,11 @@ void SystemObject::createNewTracks(t_Mat<double> centroids, t_Mat<int> bboxes, t
 		// Create a new track
 		t_tracks track;
 		track.id = nextId;
-		int temp_bbox[4] = {centroids.get(i,0), centroids.get(i,1), centroids.get(i,2), centroids.get(i,3)};
+		double* temp_bbox = new double[4];
+		temp_bbox[0] = bboxes.at(i)[0];
+		temp_bbox[1] = bboxes.at(i)[1];
+		temp_bbox[2] = bboxes.at(i)[2];
+		temp_bbox[3] = bboxes.at(i)[3];
 		track.bbox = temp_bbox;
 		track.kalmanFilter = kalmanFilter;
 		track.age = 1;

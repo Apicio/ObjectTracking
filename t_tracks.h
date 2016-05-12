@@ -8,7 +8,7 @@ class t_tracks
 {
 public:
 	int id;
-	int* bbox;
+	double* bbox;
 	KalmanFilter kalmanFilter;
 	int age;
 	int totalVisibleCount;
