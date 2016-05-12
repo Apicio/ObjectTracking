@@ -81,11 +81,19 @@ void SystemObject::detectionToTrackAssignment(vector<t_tracks>tracks, vector<dou
 	for (int i = 1; i < nDetections + 1; i++) {
 		for (int j = 1; j < nTracks + 1; j++) {
 
-			Mat prediction = tracks.at(j-1).kalmanFilter.predict(); // non predice posizione
+		/*	Mat prediction = tracks.at(j-1).kalmanFilter.predict(); // non predice posizione
 			int predictedCentroid[2];
 			predictedCentroid[0] = (double)(prediction.at<float>(0) - tracks.at(j-1).bbox[2] / 2);
-			predictedCentroid[1] = (double)(prediction.at<float>(1) - tracks.at(j-1).bbox[3] / 2);
-			float dist = sqrt(pow(predictedCentroid[0] - centroids.at(i - 1)[0],/*^*/2) + pow(predictedCentroid[1] - centroids.at(i - 1)[1],/*^*/2));
+			predictedCentroid[1] = (double)(prediction.at<float>(1) - tracks.at(j-1).bbox[3] / 2);*/
+			//Ricavo centroide dalla traccia
+			int width = tracks.at(j-1).bbox[3];
+			int heigh = tracks.at(j-1).bbox[2];
+			int y = tracks.at(j-1).bbox[0];
+			int x = tracks.at(j-1).bbox[1];
+			double currCent[2] = {  x + width / 2,y + heigh / 2 };
+
+
+			float dist = sqrt(pow(currCent[0] - centroids.at(i - 1)[0],/*^*/2) + pow(currCent[1] - centroids.at(i - 1)[1],/*^*/2));
 			dist = dist < DMAX ? dist : DMAX;
 			SimilarityMatrix[i][j] = 1 - dist / DMAX;
 		}

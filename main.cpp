@@ -43,7 +43,7 @@ int main(int argc, char** argv)
 		frame = imread(toOpen.str(), IMREAD_COLOR);
 
 		obj->detectObjects(frame, /*return*/ centroids, bboxes, mask);
-		obj->predictNewLocationsOfTracks(tracks);
+	//	obj->predictNewLocationsOfTracks(tracks);
 		obj->detectionToTrackAssignment(tracks, centroids, /*return*/ assignments, unassignedTracks, unassignedDetections);
 		obj->updateAssignedTracks(centroids, bboxes, assignments, /*return*/ tracks);
 		obj->updateUnassignedTracks(unassignedDetections,  /*return*/ tracks);
