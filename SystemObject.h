@@ -17,8 +17,8 @@
 #define AGETHRESHOLD 8
 #define VISIBILITYTHRESHOLD 0.6
 #define DMAX 100
-#define MINAREA 100
-#define MAXAREA 5000
+#define MINAREA 200
+#define MAXAREA 2500
 
 using namespace cv;
 using namespace std;
@@ -29,13 +29,13 @@ private:
 	Ptr<BackgroundSubtractor> pMOG;
 public:
 	SystemObject() {
-		pMOG = createBackgroundSubtractorKNN(500, 400, false); /*history, ngaussianMixuter, shadows*/
+		pMOG = createBackgroundSubtractorKNN(500, 100, true); /*history, ngaussianMixuter, shadows*/
 	};
 	void detectObjects(const Mat, vector<double*>&, vector<double*>&, Mat&);
 	void predictNewLocationsOfTracks(vector<t_tracks>&);
 	void detectionToTrackAssignment(vector<t_tracks>, vector<double*>, vector<int*>&, vector<int>&, vector<int>&);
 	void updateAssignedTracks(vector<double*>, vector<double*>, vector<int*>, vector<t_tracks>&);
-	void updateUnassignedTracks(vector<int>, vector<t_tracks>&);
+	void updateUnassignedTracks(vector<int>&, vector<t_tracks>&);
 	void deleteLostTracks(vector<t_tracks>&);
 	void createNewTracks(vector<double*>, vector<double*>, vector<int>, int&, vector<t_tracks>&);
 	~SystemObject();

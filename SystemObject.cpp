@@ -20,9 +20,9 @@ void SystemObject::detectObjects(const Mat frame, /*return*/ vector<double*>& ce
 	morphologyEx(mask, mask, MORPH_OPEN, kernel); // Opening to remove spikes and noise (erode + dilate)
 	kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
 	morphologyEx(mask, mask, MORPH_CLOSE, kernel); // Closing to fill holes (dilate + erode)
+	threshold(mask, mask, 200, 255, THRESH_BINARY);
 	/*Blobs Detection, compute centroids and bboxes*/
 	int nLabels = connectedComponentsWithStats(mask,labels, stats,centroid);
-	
 	int num_blob = 0;
 	for (int i = 0; i < nLabels; i++) {
 		float area = stats.at<int>(i, CC_STAT_AREA);
@@ -168,7 +168,7 @@ void SystemObject::updateAssignedTracks(vector<double*> centroids, vector<double
 		tracks.at(trackIdx).consecutiveInvisibleCount = 0;
 	}
 }
-void SystemObject::updateUnassignedTracks(vector<int> unassignedTracks,  /*return*/ vector<t_tracks>& tracks) 
+void SystemObject::updateUnassignedTracks(vector<int>& unassignedTracks,  /*return*/ vector<t_tracks>& tracks) 
 {
 	int numUnassignedTracks = unassignedTracks.size();
 	if (numUnassignedTracks > tracks.size())
@@ -176,7 +176,7 @@ void SystemObject::updateUnassignedTracks(vector<int> unassignedTracks,  /*retur
 
 	for (int i = 0; i < numUnassignedTracks; i++) {
 			int ind = unassignedTracks.at(i);
-			tracks.at(ind).age = tracks.at(ind).age + 1;
+ 			tracks.at(ind).age = tracks.at(ind).age + 1;
 			tracks.at(ind).consecutiveInvisibleCount = tracks.at(ind).consecutiveInvisibleCount + 1;
 	}
 }
